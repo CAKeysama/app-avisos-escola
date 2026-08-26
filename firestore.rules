@@ -1,0 +1,96 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Funções auxiliares de autenticação e RBAC
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function hasRole(role) {
+      return isAuthenticated() && getUserData().role == role;
+    }
+
+    function isAdmin() {
+      return hasRole('admin');
+    }
+
+    function isCoordinator() {
+      return hasRole('coordinator') || isAdmin();
+    }
+
+    function isTeacher() {
+      return hasRole('teacher') || isCoordinator();
+    }
+
+    function isRepresentative() {
+      return hasRole('representative');
+    }
+
+    // Regras para Coleção de Usuários
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      // O usuário pode criar seu perfil inicial, mas apenas admins podem alterar a role
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']))
+                    || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Regras para Coleção de Avisos Acadêmicos
+    match /announcements/{announcementId} {
+      allow read: if isAuthenticated();
+
+      // Criação com regras estritas por público-alvo
+      allow create: if isAuthenticated() && (
+        // Admin e Coordenadores podem publicar para qualquer público
+        isCoordinator() ||
+        // Professores podem publicar para turmas autorizadas
+        (isTeacher() && request.resource.data.targetType == 'classTarget') ||
+        // Representantes só podem publicar para sua própria turma
+        (isRepresentative() &&
+         request.resource.data.targetType == 'classTarget' &&
+         request.resource.data.classId == getUserData().classId &&
+         request.resource.data.authorId == request.auth.uid)
+      );
+
+      // Edição: Apenas autor do aviso ou Administrador/Coordenador
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        isCoordinator() ||
+        (resource.data.authorId == request.auth.uid)
+      );
+
+      // Exclusão: Apenas autor ou Administrador
+      allow delete: if isAuthenticated() && (
+        isAdmin() ||
+        isCoordinator() ||
+        (resource.data.authorId == request.auth.uid)
+      );
+    }
+
+    // Regras para Leituras de Avisos (announcement_reads)
+    match /announcement_reads/{userId}/reads/{announcementId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Cursos e Turmas (apenas administradores editam)
+    match /courses/{courseId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /classes/{classId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+  }
+}
