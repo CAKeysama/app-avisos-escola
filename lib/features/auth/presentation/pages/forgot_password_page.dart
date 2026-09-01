@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/widgets/app_button.dart';
@@ -13,29 +12,44 @@ class ForgotPasswordPage extends ConsumerStatefulWidget {
   const ForgotPasswordPage({super.key});
 
   @override
-  ConsumerState<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
+  ConsumerState<ForgotPasswordPage> createState() =>
+      _ForgotPasswordPageState();
 }
 
-class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
+class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _emailCtrl = TextEditingController();
   bool _sent = false;
+
+  late final AnimationController _anim;
+  late final Animation<double> _fade;
+
+  @override
+  void initState() {
+    super.initState();
+    _anim = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 360));
+    _fade = CurvedAnimation(parent: _anim, curve: Curves.easeOut);
+    _anim.forward();
+  }
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _emailCtrl.dispose();
+    _anim.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-
-    final success = await ref
+    final ok = await ref
         .read(authControllerProvider.notifier)
-        .sendPasswordReset(_emailController.text);
-
-    if (success && mounted) {
+        .sendPasswordReset(_emailCtrl.text);
+    if (ok && mounted) {
+      await _anim.reverse();
       setState(() => _sent = true);
+      _anim.forward();
     }
   }
 
@@ -44,97 +58,137 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final authState = ref.watch(authControllerProvider);
 
+    final bg = isDark ? AppColors.backgroundDark : AppColors.backgroundLight;
+    final surface = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
+    final separator = isDark ? AppColors.separatorDark : AppColors.separatorLight;
+    final textPrimary = isDark ? AppColors.labelPrimaryDark : AppColors.labelPrimary;
+    final textSecondary = isDark ? AppColors.labelSecondaryDark : AppColors.labelSecondary;
+    final accent = isDark ? AppColors.primaryLight : AppColors.primary;
+
     return Scaffold(
-      backgroundColor: isDark ? AppColors.backgroundDark : AppColors.backgroundLight,
+      backgroundColor: bg,
       appBar: AppBar(
-        title: const Text('Recuperar Senha'),
+        backgroundColor: surface,
+        title: Text(
+          'Recuperar Senha',
+          style: AppTypography.navTitle.copyWith(color: textPrimary),
+        ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          icon: Icon(Icons.arrow_back_ios_rounded, size: 18, color: accent),
           onPressed: () => context.pop(),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(0.5),
+          child: Container(height: 0.5, color: separator.withOpacity(0.6)),
         ),
       ),
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.xl),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: _sent
-                  ? Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(AppSpacing.lg),
-                          decoration: BoxDecoration(
-                            color: AppColors.success.withOpacity(0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.mark_email_read_outlined,
-                              size: 48, color: AppColors.success),
-                        ),
-                        const SizedBox(height: AppSpacing.lg),
-                        Text(
-                          'E-mail Enviado!',
-                          style: AppTypography.displayMedium.copyWith(
-                            color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        Text(
-                          'Enviamos as instruções de redefinição para ${_emailController.text}. Verifique sua caixa de entrada e spam.',
-                          style: AppTypography.bodyMedium.copyWith(
-                            color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: AppSpacing.xl),
-                        AppButton(
-                          text: 'Voltar ao Login',
-                          onPressed: () => context.pop(),
-                          variant: AppButtonVariant.primary,
-                        ),
-                      ],
-                    )
-                  : Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(
-                            'Esqueceu sua senha?',
-                            style: AppTypography.displayMedium.copyWith(
-                              color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.xs),
-                          Text(
-                            'Informe seu e-mail institucional para receber o link de redefinição de acesso.',
-                            style: AppTypography.bodyMedium.copyWith(
-                              color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.xl),
-                          AppTextField(
-                            label: 'E-mail institucional',
-                            hint: 'exemplo@fatec.sp.gov.br',
-                            controller: _emailController,
-                            keyboardType: TextInputType.emailAddress,
-                            prefixIcon: Icons.email_outlined,
-                            validator: Validators.email,
-                          ),
-                          const SizedBox(height: AppSpacing.xl),
-                          AppButton(
-                            text: 'Enviar link de recuperação',
-                            isLoading: authState.isLoading,
-                            onPressed: _submit,
-                            icon: Icons.send_rounded,
-                          ),
-                        ],
-                      ),
-                    ),
+        child: FadeTransition(
+          opacity: _fade,
+          child: _sent ? _buildSuccess(textPrimary, textSecondary, accent) : _buildForm(surface, separator, textPrimary, textSecondary, accent, authState),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildForm(
+    Color surface,
+    Color separator,
+    Color textPrimary,
+    Color textSecondary,
+    Color accent,
+    dynamic authState,
+  ) {
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      children: [
+        const SizedBox(height: 36),
+        Text(
+          'Esqueceu sua senha?',
+          style: AppTypography.title1.copyWith(color: textPrimary),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Informe seu e-mail institucional e enviaremos um link para redefinir sua senha.',
+          style: AppTypography.footnote.copyWith(color: textSecondary),
+        ),
+        const SizedBox(height: 32),
+
+        // Campo agrupado
+        Form(
+          key: _formKey,
+          child: Container(
+            decoration: BoxDecoration(
+              color: surface,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: AppTextField(
+              hint: 'E-mail institucional',
+              controller: _emailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              prefixIcon: Icons.mail_outline_rounded,
+              validator: Validators.email,
+              textInputAction: TextInputAction.done,
             ),
           ),
         ),
+        const SizedBox(height: 24),
+
+        AppButton(
+          text: 'Enviar link',
+          isLoading: authState.isLoading,
+          onPressed: _submit,
+        ),
+        const SizedBox(height: 20),
+
+        Center(
+          child: GestureDetector(
+            onTap: () => context.pop(),
+            child: Text(
+              'Lembrou a senha? Entrar',
+              style: AppTypography.footnote.copyWith(
+                color: accent,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSuccess(
+      Color textPrimary, Color textSecondary, Color accent) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Ícone de sucesso — discreto, sem círculo colorido pesado
+          Icon(
+            Icons.mark_email_read_outlined,
+            size: 56,
+            color: AppColors.success,
+          ),
+          const SizedBox(height: 28),
+          Text(
+            'E-mail enviado',
+            style: AppTypography.title1.copyWith(color: textPrimary),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Enviamos as instruções para ${_emailCtrl.text}. Verifique sua caixa de entrada e spam.',
+            style: AppTypography.footnote.copyWith(color: textSecondary),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 40),
+          AppButton(
+            text: 'Voltar ao Login',
+            onPressed: () => context.pop(),
+          ),
+        ],
       ),
     );
   }

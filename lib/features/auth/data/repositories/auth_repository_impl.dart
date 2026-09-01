@@ -65,8 +65,11 @@ class AuthRepositoryImpl implements AuthRepository {
       );
 
       return await _remoteDataSource.register(newUser, password);
+    } on AuthException catch (e) {
+      throw AuthFailure(e.message, code: e.code);
     } catch (e) {
-      throw ServerFailure('Não foi possível criar o cadastro. Tente novamente.');
+      final msg = e.toString().replaceAll('Exception: ', '').replaceAll('ServerFailure: ', '');
+      throw ServerFailure(msg.isNotEmpty ? msg : 'Não foi possível criar o cadastro. Tente novamente.');
     }
   }
 

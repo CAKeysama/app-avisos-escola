@@ -16,8 +16,7 @@ final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
 
 // Provider de DataSource
 final authRemoteDataSourceProvider = Provider<AuthRemoteDataSource>((ref) {
-  final prefs = ref.watch(sharedPreferencesProvider);
-  return AuthRemoteDataSourceImpl(prefs);
+  return AuthRemoteDataSourceImpl();
 });
 
 // Provider de Repositório
@@ -67,11 +66,12 @@ class AuthState {
 
   AuthState copyWith({
     UserEntity? user,
+    bool clearUser = false,
     bool? isLoading,
     String? errorMessage,
   }) {
     return AuthState(
-      user: user ?? this.user,
+      user: clearUser ? null : (user ?? this.user),
       isLoading: isLoading ?? this.isLoading,
       errorMessage: errorMessage,
     );
@@ -94,16 +94,21 @@ class AuthController extends StateNotifier<AuthState> {
     required this.resetPasswordUseCase,
     required this.getCurrentUserUseCase,
     required this.updateProfileUseCase,
-  }) : super(const AuthState(isLoading: true)) {
+  }) : super(const AuthState(isLoading: false)) {
     _init();
   }
 
   Future<void> _init() async {
+    state = state.copyWith(isLoading: true);
     try {
       final user = await getCurrentUserUseCase();
-      state = state.copyWith(user: user, isLoading: false);
+      if (user != null) {
+        state = state.copyWith(user: user, isLoading: false);
+      } else {
+        state = state.copyWith(clearUser: true, isLoading: false);
+      }
     } catch (_) {
-      state = state.copyWith(isLoading: false);
+      state = state.copyWith(clearUser: true, isLoading: false);
     }
   }
 
@@ -114,7 +119,8 @@ class AuthController extends StateNotifier<AuthState> {
       state = state.copyWith(user: user, isLoading: false);
       return true;
     } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: e.toString());
+      final cleanMsg = e.toString().replaceAll('Exception: ', '').replaceAll('AuthFailure: ', '');
+      state = state.copyWith(isLoading: false, errorMessage: cleanMsg);
       return false;
     }
   }
@@ -144,7 +150,12 @@ class AuthController extends StateNotifier<AuthState> {
       state = state.copyWith(user: user, isLoading: false);
       return true;
     } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: e.toString());
+      final cleanMsg = e
+          .toString()
+          .replaceAll('Exception: ', '')
+          .replaceAll('AuthFailure: ', '')
+          .replaceAll('ServerFailure: ', '');
+      state = state.copyWith(isLoading: false, errorMessage: cleanMsg);
       return false;
     }
   }

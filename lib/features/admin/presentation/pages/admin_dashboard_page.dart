@@ -8,6 +8,8 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../announcements/presentation/controllers/announcement_feed_controller.dart';
 
+import '../../../auth/presentation/controllers/role_requests_controller.dart';
+
 class AdminDashboardPage extends ConsumerWidget {
   const AdminDashboardPage({super.key});
 
@@ -15,10 +17,13 @@ class AdminDashboardPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final announcementsAsync = ref.watch(announcementsFeedStreamProvider);
+    final pendingRequestsCount = ref
+        .watch(roleRequestsProvider.notifier)
+        .pendingRequests
+        .length;
 
     final totalAnnouncements = announcementsAsync.value?.length ?? 0;
     final totalCourses = MockDataService.courses.length;
-    final totalClasses = MockDataService.classes.length;
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.backgroundDark : AppColors.backgroundLight,
@@ -57,15 +62,15 @@ class AdminDashboardPage extends ConsumerWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: _metricCard('Avisos Ativos', '$totalAnnouncements', Icons.campaign_rounded, AppColors.primary, isDark),
+                        child: _metricCard('Avisos', '$totalAnnouncements', Icons.campaign_rounded, AppColors.primary, isDark),
                       ),
-                      const SizedBox(width: AppSpacing.md),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: _metricCard('Pendentes', '$pendingRequestsCount', Icons.pending_actions_rounded, AppColors.warning, isDark),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: _metricCard('Cursos', '$totalCourses', Icons.school_rounded, AppColors.categoryAcademic, isDark),
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: _metricCard('Turmas', '$totalClasses', Icons.groups_rounded, AppColors.categoryClass, isDark),
                       ),
                     ],
                   ),
@@ -91,12 +96,47 @@ class AdminDashboardPage extends ConsumerWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Gerenciamento de Usuários e Permissões', style: AppTypography.labelLarge),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      'Gerenciar Usuários & Cargos',
+                                      style: AppTypography.subheadline.copyWith(
+                                        color: isDark ? AppColors.labelPrimaryDark : AppColors.labelPrimary,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  if (pendingRequestsCount > 0) ...[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.warning.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Text(
+                                        '$pendingRequestsCount pendente',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: isDark ? AppColors.warning : AppColors.primaryDark,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              const SizedBox(height: 2),
                               Text(
-                                'Promover representantes, coordenadores e professores',
-                                style: AppTypography.bodySmall.copyWith(
-                                  color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                                'Aprovar solicitações de promoção e alterar papéis',
+                                style: AppTypography.caption.copyWith(
+                                  color: isDark ? AppColors.labelSecondaryDark : AppColors.labelSecondary,
                                 ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ),

@@ -1,67 +1,86 @@
 import 'package:flutter/material.dart';
 
-/// Paleta de cores do Design System FATEC / Institucional com inspiração Apple.
+/// Paleta Apple HIG — "Pure White" como tema primário.
+/// Baseado no iOS 17 UIKit system colors exatos.
 class AppColors {
   AppColors._();
 
-  // Cores Primárias (Azul Institucional FATEC)
-  static const Color primary = Color(0xFF005A9C);
-  static const Color primaryLight = Color(0xFF1E88E5);
-  static const Color primaryDark = Color(0xFF003E6D);
-  static const Color primaryContainer = Color(0xFFE3F2FD);
-  static const Color onPrimaryContainer = Color(0xFF00325B);
+  // ── Azul Apple (único acento colorido do sistema) ────────────────────────
+  static const Color primary      = Color(0xFF007AFF);
+  static const Color primaryLight = Color(0xFF409CFF);
 
-  // Cores de Apoio
-  static const Color accent = Color(0xFF0284C7);
-  static const Color secondary = Color(0xFF334155);
+  // ── Light Mode ───────────────────────────────────────────────────────────
+  // Page background (cinza agrupado do iOS — fundo da página)
+  static const Color backgroundLight  = Color(0xFFF2F2F7);
+  // Surface branca (seções, cards, nav bar)
+  static const Color surfaceLight     = Color(0xFFFFFFFF);
+  // Separador — linha tênue iOS
+  static const Color separatorLight   = Color(0xFFC6C6C8);
+  // Fill para inputs e chips inativos
+  static const Color fillLight        = Color(0xFFEFEFF4);
 
-  // Superfícies e Fundos (Light Mode)
-  static const Color backgroundLight = Color(0xFFF8FAFC);
-  static const Color surfaceLight = Color(0xFFFFFFFF);
-  static const Color cardLight = Color(0xFFFFFFFF);
-  static const Color borderLight = Color(0xFFE2E8F0);
-  static const Color dividerLight = Color(0xFFF1F5F9);
+  // Tipografia Light
+  static const Color labelPrimary     = Color(0xFF000000);
+  static const Color labelSecondary   = Color(0xFF6C6C70); // secondaryLabel iOS
+  static const Color labelTertiary    = Color(0xFFAEAEB2); // tertiaryLabel iOS
 
-  // Tipografia (Light Mode)
-  static const Color textPrimaryLight = Color(0xFF0F172A);
-  static const Color textSecondaryLight = Color(0xFF64748B);
-  static const Color textMutedLight = Color(0xFF94A3B8);
+  // ── Dark Mode ────────────────────────────────────────────────────────────
+  static const Color backgroundDark   = Color(0xFF000000);
+  static const Color surfaceDark      = Color(0xFF1C1C1E);
+  static const Color separatorDark    = Color(0xFF38383A);
+  static const Color fillDark         = Color(0xFF2C2C2E);
 
-  // Superfícies e Fundos (Dark Mode - Apple Dark Slate)
-  static const Color backgroundDark = Color(0xFF0B0F17);
-  static const Color surfaceDark = Color(0xFF151D2A);
-  static const Color cardDark = Color(0xFF1A2434);
-  static const Color borderDark = Color(0xFF26354A);
-  static const Color dividerDark = Color(0xFF1E293B);
+  // Tipografia Dark
+  static const Color labelPrimaryDark   = Color(0xFFFFFFFF);
+  static const Color labelSecondaryDark = Color(0xFFAEAEB2);
+  static const Color labelTertiaryDark  = Color(0xFF636366);
 
-  // Tipografia (Dark Mode)
-  static const Color textPrimaryDark = Color(0xFFF8FAFC);
-  static const Color textSecondaryDark = Color(0xFF94A3B8);
-  static const Color textMutedDark = Color(0xFF64748B);
+  // ── Semânticas (usadas com parcimônia) ───────────────────────────────────
+  static const Color destructive = Color(0xFFFF3B30); // iOS Red
+  static const Color success     = Color(0xFF30D158); // iOS Green
+  static const Color warning     = Color(0xFFFF9F0A); // iOS Orange
+  static const Color purple      = Color(0xFFBF5AF2); // iOS Purple
 
-  // Semáforo de Prioridades (Discreto e Elegante)
-  static const Color priorityNormal = Color(0xFF0284C7);
-  static const Color priorityNormalBg = Color(0xFFE0F2FE);
-  static const Color priorityImportant = Color(0xFFD97706);
-  static const Color priorityImportantBg = Color(0xFFFEF3C7);
-  static const Color priorityUrgent = Color(0xFFDC2626);
-  static const Color priorityUrgentBg = Color(0xFFFEE2E2);
+  // ── Categorias (dot color, não background) ───────────────────────────────
+  static const Color categoryGeneral      = Color(0xFF8E8E93);
+  static const Color categoryAcademic     = Color(0xFF007AFF);
+  static const Color categoryClass        = Color(0xFF30D158);
+  static const Color categoryExam         = Color(0xFFFF9F0A);
+  static const Color categoryHomework     = Color(0xFFBF5AF2);
+  static const Color categoryEvent        = Color(0xFFFF2D55);
+  static const Color categoryAdmin        = Color(0xFF8E8E93);
+  static const Color categoryRoomChange   = Color(0xFFFF6B00);
+  static const Color categoryCancellation = Color(0xFFFF3B30);
+  static const Color categoryDeadline     = Color(0xFFAF52DE);
 
-  // Categorias
-  static const Color categoryGeneral = Color(0xFF64748B);
-  static const Color categoryAcademic = Color(0xFF2563EB);
-  static const Color categoryClass = Color(0xFF059669);
-  static const Color categoryExam = Color(0xFFD97706);
-  static const Color categoryHomework = Color(0xFF7C3AED);
-  static const Color categoryEvent = Color(0xFFDB2777);
-  static const Color categoryAdmin = Color(0xFF475569);
-  static const Color categoryRoomChange = Color(0xFFEA580C);
-  static const Color categoryCancellation = Color(0xFFDC2626);
-  static const Color categoryDeadline = Color(0xFF9333EA);
+  // Prioridade
+  static const Color priorityUrgent    = Color(0xFFFF3B30);
+  static const Color priorityImportant = Color(0xFFFF9F0A);
+  static const Color priorityNormal    = Color(0xFF007AFF);
 
-  // Estados
-  static const Color success = Color(0xFF16A34A);
-  static const Color warning = Color(0xFFF59E0B);
-  static const Color error = Color(0xFFEF4444);
-  static const Color info = Color(0xFF3B82F6);
+  // Legado — para não quebrar referências existentes
+  static const Color error                 = destructive;
+  static const Color accent                = primary;
+  static const Color secondary             = labelSecondary;
+  static const Color primaryContainer      = Color(0xFFE5F1FF);
+  static const Color onPrimaryContainer    = Color(0xFF003D99);
+  static const Color primaryDark           = Color(0xFF0055B3);
+  static const Color cardLight             = surfaceLight;
+  static const Color cardDark              = surfaceDark;
+  static const Color borderLight           = separatorLight;
+  static const Color borderDark            = separatorDark;
+  static const Color dividerLight          = Color(0xFFE5E5EA);
+  static const Color dividerDark           = Color(0xFF2C2C2E);
+  static const Color textPrimaryLight      = labelPrimary;
+  static const Color textSecondaryLight    = labelSecondary;
+  static const Color textMutedLight        = labelTertiary;
+  static const Color textPrimaryDark       = labelPrimaryDark;
+  static const Color textSecondaryDark     = labelSecondaryDark;
+  static const Color textMutedDark         = labelTertiaryDark;
+  static const Color fillSecondLight       = fillLight;
+  static const Color priorityNormalBg      = Color(0xFFE5F1FF);
+  static const Color priorityImportantBg   = Color(0xFFFFF3E0);
+  static const Color priorityUrgentBg      = Color(0xFFFFE5E4);
+  static const Color info                  = primary;
+  static const Color teal                  = Color(0xFF32ADE6);
 }

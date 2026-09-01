@@ -6,7 +6,8 @@ import '../theme/app_typography.dart';
 
 enum AppButtonVariant { primary, secondary, outline, text, destructive }
 
-class AppButton extends StatelessWidget {
+/// Botão estilo iOS — altura 50px, radius 13px, animação de opacidade.
+class AppButton extends StatefulWidget {
   final String text;
   final VoidCallback? onPressed;
   final bool isLoading;
@@ -14,6 +15,7 @@ class AppButton extends StatelessWidget {
   final AppButtonVariant variant;
   final bool isFullWidth;
   final EdgeInsets? padding;
+  final double? minHeight;
 
   const AppButton({
     super.key,
@@ -24,44 +26,72 @@ class AppButton extends StatelessWidget {
     this.variant = AppButtonVariant.primary,
     this.isFullWidth = true,
     this.padding,
+    this.minHeight,
   });
+
+  @override
+  State<AppButton> createState() => _AppButtonState();
+}
+
+class _AppButtonState extends State<AppButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _opacityController;
+  late final Animation<double> _opacityAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _opacityController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 80),
+      reverseDuration: const Duration(milliseconds: 160),
+    );
+    _opacityAnim = Tween<double>(begin: 1.0, end: 0.5).animate(
+      CurvedAnimation(parent: _opacityController, curve: Curves.easeOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _opacityController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDisabled = widget.onPressed == null || widget.isLoading;
 
     Color backgroundColor;
     Color foregroundColor;
-    BorderSide borderSide = BorderSide.none;
+    Border? border;
 
-    switch (variant) {
+    switch (widget.variant) {
       case AppButtonVariant.primary:
         backgroundColor = isDark ? AppColors.primaryLight : AppColors.primary;
         foregroundColor = Colors.white;
-        break;
       case AppButtonVariant.secondary:
-        backgroundColor = isDark ? AppColors.surfaceDark : AppColors.primaryContainer;
-        foregroundColor = isDark ? AppColors.textPrimaryDark : AppColors.onPrimaryContainer;
-        break;
+        backgroundColor = isDark ? AppColors.fillDark : AppColors.fillSecondLight;
+        foregroundColor =
+            isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight;
       case AppButtonVariant.outline:
         backgroundColor = Colors.transparent;
-        foregroundColor = isDark ? AppColors.textPrimaryDark : AppColors.primary;
-        borderSide = BorderSide(
-          color: isDark ? AppColors.borderDark : AppColors.borderLight,
-          width: 1.2,
+        foregroundColor =
+            isDark ? AppColors.primaryLight : AppColors.primary;
+        border = Border.all(
+          color: isDark ? AppColors.primaryLight : AppColors.primary,
+          width: 1.5,
         );
-        break;
       case AppButtonVariant.text:
         backgroundColor = Colors.transparent;
-        foregroundColor = isDark ? AppColors.primaryLight : AppColors.primary;
-        break;
+        foregroundColor =
+            isDark ? AppColors.primaryLight : AppColors.primary;
       case AppButtonVariant.destructive:
         backgroundColor = AppColors.error;
         foregroundColor = Colors.white;
-        break;
     }
 
-    final buttonChild = isLoading
+    final buttonContent = widget.isLoading
         ? SizedBox(
             height: 20,
             width: 20,
@@ -74,12 +104,12 @@ class AppButton extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (icon != null) ...[
-                Icon(icon, size: 18, color: foregroundColor),
+              if (widget.icon != null) ...[
+                Icon(widget.icon, size: 19, color: foregroundColor),
                 const SizedBox(width: AppSpacing.xs),
               ],
               Text(
-                text,
+                widget.text,
                 style: AppTypography.labelLarge.copyWith(
                   color: foregroundColor,
                   fontWeight: FontWeight.w600,
@@ -88,26 +118,42 @@ class AppButton extends StatelessWidget {
             ],
           );
 
-    final button = Material(
-      color: onPressed == null ? backgroundColor.withOpacity(0.5) : backgroundColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: AppRadius.borderMd,
-        side: borderSide,
-      ),
-      child: InkWell(
-        onTap: (isLoading || onPressed == null) ? null : onPressed,
-        borderRadius: AppRadius.borderMd,
-        child: Container(
-          padding: padding ?? AppSpacing.paddingButton,
-          alignment: Alignment.center,
-          child: buttonChild,
+    final innerButton = GestureDetector(
+      onTapDown: isDisabled
+          ? null
+          : (_) => _opacityController.forward(),
+      onTapUp: isDisabled
+          ? null
+          : (_) {
+              _opacityController.reverse();
+              widget.onPressed?.call();
+            },
+      onTapCancel: isDisabled ? null : () => _opacityController.reverse(),
+      child: FadeTransition(
+        opacity: _opacityAnim,
+        child: AnimatedOpacity(
+          opacity: isDisabled ? 0.46 : 1.0,
+          duration: const Duration(milliseconds: 150),
+          child: Container(
+            constraints:
+                BoxConstraints(minHeight: widget.minHeight ?? 50),
+            padding: widget.padding ??
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              borderRadius: AppRadius.borderMd,
+              border: border,
+            ),
+            alignment: Alignment.center,
+            child: buttonContent,
+          ),
         ),
       ),
     );
 
-    if (isFullWidth) {
-      return SizedBox(width: double.infinity, child: button);
+    if (widget.isFullWidth) {
+      return SizedBox(width: double.infinity, child: innerButton);
     }
-    return button;
+    return innerButton;
   }
 }

@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
-import '../theme/app_spacing.dart';
 
-class AppCard extends StatelessWidget {
+/// Card estilo iOS — superfície branca limpa com scale ao tocar.
+/// Sem sombra excessiva. Deixa separadores fazerem o trabalho estrutural.
+class AppCard extends StatefulWidget {
   final Widget child;
   final EdgeInsets? padding;
   final VoidCallback? onTap;
   final Color? backgroundColor;
-  final BorderSide? border;
   final bool isHighlighted;
+  final bool noPadding;
 
   const AppCard({
     super.key,
@@ -17,54 +18,78 @@ class AppCard extends StatelessWidget {
     this.padding,
     this.onTap,
     this.backgroundColor,
-    this.border,
     this.isHighlighted = false,
+    this.noPadding = false,
   });
+
+  @override
+  State<AppCard> createState() => _AppCardState();
+}
+
+class _AppCardState extends State<AppCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 90),
+      reverseDuration: const Duration(milliseconds: 200),
+    );
+    _scale = Tween<double>(begin: 1.0, end: 0.974).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = widget.backgroundColor ??
+        (isDark ? AppColors.surfaceDark : AppColors.surfaceLight);
+    final accent = isDark ? AppColors.primaryLight : AppColors.primary;
 
-    final defaultBg = isDark ? AppColors.cardDark : AppColors.cardLight;
-    final defaultBorderColor = isHighlighted
-        ? (isDark ? AppColors.primaryLight : AppColors.primary)
-        : (isDark ? AppColors.borderDark : AppColors.borderLight);
-
-    final cardBorder = border ??
-        BorderSide(
-          color: defaultBorderColor,
-          width: isHighlighted ? 1.5 : 1.0,
-        );
-
-    final card = Container(
-      decoration: BoxDecoration(
-        color: backgroundColor ?? defaultBg,
-        borderRadius: AppRadius.borderLg,
-        border: Border.fromBorderSide(cardBorder),
-        boxShadow: isDark
-            ? null
-            : [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.02),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: AppRadius.borderLg,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: AppRadius.borderLg,
-          child: Padding(
-            padding: padding ?? AppSpacing.paddingCard,
-            child: child,
+    return GestureDetector(
+      onTapDown: widget.onTap != null ? (_) => _ctrl.forward() : null,
+      onTapUp: widget.onTap != null
+          ? (_) {
+              _ctrl.reverse();
+              widget.onTap!();
+            }
+          : null,
+      onTapCancel:
+          widget.onTap != null ? () => _ctrl.reverse() : null,
+      child: ScaleTransition(
+        scale: _scale,
+        child: Container(
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: AppRadius.borderLg,
+            border: widget.isHighlighted
+                ? Border.all(
+                    color: accent.withOpacity(0.35), width: 1.2)
+                : null,
+          ),
+          child: ClipRRect(
+            borderRadius: AppRadius.borderLg,
+            child: Padding(
+              padding: widget.noPadding
+                  ? EdgeInsets.zero
+                  : widget.padding ??
+                      const EdgeInsets.all(16),
+              child: widget.child,
+            ),
           ),
         ),
       ),
     );
-
-    return card;
   }
 }

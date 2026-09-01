@@ -2,19 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_radius.dart';
-import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/date_formatter.dart';
-import '../../../../core/widgets/app_button.dart';
-import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_error_view.dart';
 import '../../../../core/widgets/app_loading.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../controllers/announcement_feed_controller.dart';
-import '../widgets/category_chip.dart';
-import '../widgets/priority_badge.dart';
-import '../widgets/target_badge.dart';
+import '../../domain/entities/announcement_priority.dart';
 
 final announcementDetailProvider =
     FutureProvider.family.autoDispose((ref, String id) async {
@@ -23,7 +17,6 @@ final announcementDetailProvider =
   final announcement = await repository.getAnnouncementById(id);
 
   if (announcement != null && currentUser != null) {
-    // Marca como lido automaticamente ao abrir
     await repository.markAsRead(id, currentUser.id);
   }
 
@@ -49,7 +42,7 @@ class AnnouncementDetailPage extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            style: TextButton.styleFrom(foregroundColor: AppColors.destructive),
             child: const Text('Excluir'),
           ),
         ],
@@ -62,7 +55,6 @@ class AnnouncementDetailPage extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Aviso excluído com sucesso.'),
-            backgroundColor: AppColors.secondary,
           ),
         );
         context.pop();
@@ -76,12 +68,21 @@ class AnnouncementDetailPage extends ConsumerWidget {
     final asyncDetail = ref.watch(announcementDetailProvider(announcementId));
     final currentUser = ref.watch(authControllerProvider).user;
 
+    final bg = isDark ? AppColors.backgroundDark : AppColors.backgroundLight;
+    final surface = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
+    final separator = isDark ? AppColors.separatorDark : AppColors.separatorLight;
+    final textPrimary = isDark ? AppColors.labelPrimaryDark : AppColors.labelPrimary;
+    final textSecondary = isDark ? AppColors.labelSecondaryDark : AppColors.labelSecondary;
+    final textTertiary = isDark ? AppColors.labelTertiaryDark : AppColors.labelTertiary;
+    final accent = isDark ? AppColors.primaryLight : AppColors.primary;
+    final fill = isDark ? AppColors.fillDark : AppColors.fillLight;
+
     return Scaffold(
-      backgroundColor: isDark ? AppColors.backgroundDark : AppColors.backgroundLight,
+      backgroundColor: bg,
       appBar: AppBar(
-        title: const Text('Detalhes do Aviso'),
+        backgroundColor: surface,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          icon: Icon(Icons.arrow_back_ios_rounded, size: 18, color: accent),
           onPressed: () => context.pop(),
         ),
         actions: [
@@ -96,218 +97,249 @@ class AnnouncementDetailPage extends ConsumerWidget {
 
                   if (!canManage) return null;
 
-                  return PopupMenuButton<String>(
-                    onSelected: (val) {
-                      if (val == 'delete') {
-                        _confirmDelete(context, ref);
-                      }
-                    },
-                    itemBuilder: (ctx) => [
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete_outline, color: AppColors.error, size: 20),
-                            SizedBox(width: 8),
-                            Text('Excluir Publicação', style: TextStyle(color: AppColors.error)),
-                          ],
-                        ),
-                      ),
-                    ],
+                  return IconButton(
+                    icon: const Icon(Icons.delete_outline_rounded, size: 20, color: AppColors.destructive),
+                    onPressed: () => _confirmDelete(context, ref),
+                    tooltip: 'Excluir',
                   );
                 },
               ) ??
               const SizedBox.shrink(),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(0.5),
+          child: Container(height: 0.5, color: separator.withOpacity(0.6)),
+        ),
       ),
       body: SafeArea(
         child: asyncDetail.when(
-          loading: () => const AppLoading(message: 'Carregando publicação...'),
+          loading: () => const AppLoading(message: 'Carregando...'),
           error: (err, _) => AppErrorView(
             message: err.toString(),
             onRetry: () => ref.invalidate(announcementDetailProvider(announcementId)),
           ),
           data: (announcement) {
             if (announcement == null) {
-              return const AppErrorView(message: 'Aviso não encontrado ou já removido.');
+              return const AppErrorView(message: 'Aviso não encontrado ou removido.');
             }
+
+            final isUrgent = announcement.priority == AnnouncementPriority.urgent;
 
             return Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 750),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(AppSpacing.xl),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Linha de Badges: Categoria, Prioridade, Público
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          CategoryChip(category: announcement.category),
-                          PriorityBadge(priority: announcement.priority),
-                          TargetBadge(
-                            targetType: announcement.targetType,
-                            label: announcement.targetDisplayLabel,
+                constraints: const BoxConstraints(maxWidth: 720),
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                  children: [
+                    // ── Título do Aviso ──────────────────────────────────
+                    Text(
+                      announcement.title,
+                      style: AppTypography.title1.copyWith(
+                        color: textPrimary,
+                        height: 1.25,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // ── Metadados / Subtítulo discreto estilo iOS ──────────
+                    Row(
+                      children: [
+                        // Indicator dot de categoria
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: isUrgent ? AppColors.priorityUrgent : announcement.category.color,
+                            shape: BoxShape.circle,
                           ),
-                          if (announcement.isPinned)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: isDark ? AppColors.primaryLight.withOpacity(0.15) : AppColors.primaryContainer,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.push_pin_rounded,
-                                    size: 13,
-                                    color: isDark ? AppColors.primaryLight : AppColors.primary,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'Fixado no topo',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
-                                      color: isDark ? AppColors.primaryLight : AppColors.primary,
-                                    ),
-                                  ),
-                                ],
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          announcement.category.label,
+                          style: AppTypography.caption.copyWith(
+                            color: textSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          '  •  ${announcement.targetDisplayLabel}',
+                          style: AppTypography.caption.copyWith(
+                            color: textTertiary,
+                          ),
+                        ),
+                        if (isUrgent) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.priorityUrgent.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'Urgente',
+                              style: AppTypography.caption2.copyWith(
+                                color: AppColors.priorityUrgent,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
+                          ),
+                        ],
+                        if (announcement.isPinned) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: accent.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'Fixado',
+                              style: AppTypography.caption2.copyWith(
+                                color: accent,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ── Seção do Autor — estilo iOS Mail (Clean Header) ────
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: surface,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: isDark ? fill : AppColors.primaryContainer,
+                              shape: BoxShape.circle,
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              announcement.authorName.isNotEmpty
+                                  ? announcement.authorName[0].toUpperCase()
+                                  : 'A',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: accent,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  announcement.authorName,
+                                  style: AppTypography.subheadline.copyWith(
+                                    color: textPrimary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  announcement.authorRole.label,
+                                  style: AppTypography.caption.copyWith(
+                                    color: textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Text(
+                            DateFormatter.formatDateTime(announcement.createdAt),
+                            style: AppTypography.caption.copyWith(
+                              color: textTertiary,
+                            ),
+                          ),
                         ],
                       ),
-                      const SizedBox(height: AppSpacing.lg),
+                    ),
 
-                      // Título Principal
-                      Text(
-                        announcement.title,
-                        style: AppTypography.displayMedium.copyWith(
-                          color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-                          fontWeight: FontWeight.w800,
-                        ),
+                    const SizedBox(height: 24),
+
+                    // ── Conteúdo / Descrição do Aviso ─────────────────────
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: surface,
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      const SizedBox(height: AppSpacing.lg),
-
-                      // Informações do Autor e Data
-                      AppCard(
-                        padding: const EdgeInsets.all(AppSpacing.md),
-                        backgroundColor: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
-                        child: Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 22,
-                              backgroundColor: isDark ? AppColors.cardDark : AppColors.primaryContainer,
-                              child: Text(
-                                announcement.authorName.isNotEmpty
-                                    ? announcement.authorName[0].toUpperCase()
-                                    : 'A',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: AppSpacing.md),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    announcement.authorName,
-                                    style: AppTypography.titleMedium.copyWith(
-                                      color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  Text(
-                                    '${announcement.authorRole.label} • Publicado em ${DateFormatter.formatDateTime(announcement.createdAt)}',
-                                    style: AppTypography.bodySmall.copyWith(
-                                      color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
-
-                      // Conteúdo da Descrição
-                      Text(
+                      child: Text(
                         announcement.description,
-                        style: AppTypography.bodyLarge.copyWith(
-                          color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-                          height: 1.6,
+                        style: AppTypography.body.copyWith(
+                          color: textPrimary,
+                          height: 1.55,
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.xxl),
+                    ),
 
-                      // Anexo Opcional
-                      if (announcement.attachmentUrl != null || announcement.attachmentName != null) ...[
-                        Text(
-                          'Anexos',
-                          style: AppTypography.titleMedium.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                    // ── Anexo (se houver) ─────────────────────────────────
+                    if (announcement.attachmentUrl != null || announcement.attachmentName != null) ...[
+                      const SizedBox(height: 24),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4, bottom: 8),
+                        child: Text(
+                          'ANEXOS',
+                          style: AppTypography.caption2.copyWith(
+                            color: textTertiary,
+                            letterSpacing: 0.5,
                           ),
                         ),
-                        const SizedBox(height: AppSpacing.xs),
-                        AppCard(
+                      ),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: surface,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: ListTile(
+                          tileColor: Colors.transparent,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          leading: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: accent.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(Icons.insert_drive_file_outlined, color: accent, size: 20),
+                          ),
+                          title: Text(
+                            announcement.attachmentName ?? 'Documento_Institucional.pdf',
+                            style: AppTypography.subheadline.copyWith(
+                              color: textPrimary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                            'Toque para abrir',
+                            style: AppTypography.caption.copyWith(color: textSecondary),
+                          ),
+                          trailing: Icon(Icons.arrow_outward_rounded, size: 18, color: textTertiary),
                           onTap: () {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Abrindo anexo acadêmico...')),
+                              const SnackBar(content: Text('Abrindo anexo...')),
                             );
                           },
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(AppSpacing.sm),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primaryContainer,
-                                  borderRadius: AppRadius.borderSm,
-                                ),
-                                child: const Icon(Icons.attachment_rounded, color: AppColors.primary),
-                              ),
-                              const SizedBox(width: AppSpacing.md),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      announcement.attachmentName ?? 'Documento_Institucional.pdf',
-                                      style: AppTypography.labelLarge,
-                                    ),
-                                    Text(
-                                      'Clique para visualizar',
-                                      style: AppTypography.bodySmall.copyWith(
-                                        color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const Icon(Icons.open_in_new_rounded, size: 20),
-                            ],
-                          ),
                         ),
-                        const SizedBox(height: AppSpacing.xl),
-                      ],
-
-                      // Botão Voltar
-                      AppButton(
-                        text: 'Voltar ao Mural',
-                        onPressed: () => context.pop(),
-                        variant: AppButtonVariant.outline,
-                        icon: Icons.arrow_back,
                       ),
                     ],
-                  ),
+
+                    const SizedBox(height: 48),
+                  ],
                 ),
               ),
             );

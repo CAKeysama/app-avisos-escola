@@ -11,8 +11,7 @@ import '../../domain/usecases/announcement_usecases.dart';
 
 // Provider de DataSource de Avisos
 final announcementDataSourceProvider = Provider<AnnouncementRemoteDataSource>((ref) {
-  final prefs = ref.watch(sharedPreferencesProvider);
-  return AnnouncementRemoteDataSourceImpl(prefs);
+  return AnnouncementRemoteDataSourceImpl();
 });
 
 // Provider de Repositório de Avisos

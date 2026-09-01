@@ -1,15 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/services/mock_data_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_radius.dart';
-import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_text_field.dart';
-import '../../domain/entities/user_role.dart';
 import '../controllers/auth_controller.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -19,233 +16,302 @@ class LoginPage extends ConsumerStatefulWidget {
   ConsumerState<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends ConsumerState<LoginPage> {
+class _LoginPageState extends ConsumerState<LoginPage>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController(text: 'aluno@fatec.sp.gov.br');
-  final _passwordController = TextEditingController(text: '123456');
+  final _emailCtrl = TextEditingController();
+  final _passCtrl = TextEditingController();
+
+  late final AnimationController _anim;
+  late final Animation<double> _fade;
+  late final Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    _anim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 460),
+    );
+    _fade = CurvedAnimation(parent: _anim, curve: Curves.easeOut);
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0.04),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _anim, curve: Curves.easeOut));
+    _anim.forward();
+  }
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
+    _emailCtrl.dispose();
+    _passCtrl.dispose();
+    _anim.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-
-    final success = await ref.read(authControllerProvider.notifier).login(
-          _emailController.text,
-          _passwordController.text,
-        );
-
-    if (success && mounted) {
+    final ok = await ref
+        .read(authControllerProvider.notifier)
+        .login(_emailCtrl.text, _passCtrl.text);
+    if (ok && mounted) {
       context.go('/home');
     }
   }
 
-  void _fillDemoUser(UserRole role) {
-    final demoUser = MockDataService.mockUsers.firstWhere(
-      (u) => u.role == role,
-      orElse: () => MockDataService.mockUsers.first,
-    );
-    _emailController.text = demoUser.email;
-    _passwordController.text = '123456';
-    _submit();
-  }
-
   @override
   Widget build(BuildContext context) {
+    ref.listen<AuthState>(authControllerProvider, (previous, next) {
+      if (next.errorMessage != null && next.errorMessage!.isNotEmpty) {
+        final isVerificationPending = next.errorMessage!.contains('não foi ativado') ||
+            next.errorMessage!.contains('verifique seu e-mail');
+
+        if (isVerificationPending) {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14)),
+              title: const Row(
+                children: [
+                  Icon(Icons.mark_email_unread_rounded,
+                      color: Colors.orangeAccent),
+                  SizedBox(width: 8),
+                  Text('Ative sua Conta'),
+                ],
+              ),
+              content: Text(
+                next.errorMessage!,
+                style: AppTypography.subheadline,
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('OK',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(next.errorMessage!),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+      }
+      if (next.isAuthenticated && mounted) {
+        context.go('/home');
+      }
+    });
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final authState = ref.watch(authControllerProvider);
 
+    final bg = isDark ? AppColors.backgroundDark : AppColors.backgroundLight;
+    final surface = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
+    final separator = isDark ? AppColors.separatorDark : AppColors.separatorLight;
+    final textPrimary = isDark ? AppColors.labelPrimaryDark : AppColors.labelPrimary;
+    final textSecondary = isDark ? AppColors.labelSecondaryDark : AppColors.labelSecondary;
+    final accent = isDark ? AppColors.primaryLight : AppColors.primary;
+
     return Scaffold(
-      backgroundColor: isDark ? AppColors.backgroundDark : AppColors.backgroundLight,
+      backgroundColor: bg,
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: AppSpacing.lg),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Marca e Logo
-                    Center(
-                      child: Container(
-                        width: 72,
-                        height: 72,
-                        decoration: BoxDecoration(
-                          color: isDark ? AppColors.surfaceDark : AppColors.primaryContainer,
-                          borderRadius: AppRadius.borderXl,
-                          border: Border.all(
-                            color: isDark ? AppColors.borderDark : AppColors.primaryLight.withOpacity(0.3),
-                          ),
-                        ),
-                        child: const Icon(
-                          Icons.school_rounded,
-                          size: 38,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    Text(
-                      'Mural Acadêmico',
-                      style: AppTypography.displayMedium.copyWith(
-                        color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: AppSpacing.xxs),
-                    Text(
-                      'Acesse com seu e-mail institucional FATEC',
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: AppSpacing.xxl),
+        child: FadeTransition(
+          opacity: _fade,
+          child: SlideTransition(
+            position: _slide,
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              children: [
+                const SizedBox(height: 24),
 
-                    // Erro de autenticação
-                    if (authState.errorMessage != null) ...[
-                      Container(
-                        padding: const EdgeInsets.all(AppSpacing.md),
-                        decoration: BoxDecoration(
-                          color: AppColors.error.withOpacity(0.1),
-                          borderRadius: AppRadius.borderMd,
-                          border: Border.all(color: AppColors.error.withOpacity(0.3)),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.error_outline, color: AppColors.error, size: 20),
-                            const SizedBox(width: AppSpacing.sm),
-                            Expanded(
-                              child: Text(
-                                authState.errorMessage!,
-                                style: AppTypography.bodySmall.copyWith(color: AppColors.error),
-                              ),
-                            ),
-                          ],
-                        ),
+                // ── Ícone ───────────────────────────────────────────────
+                Center(
+                  child: Container(
+                    width: 68,
+                    height: 68,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? AppColors.fillDark
+                          : AppColors.primaryContainer,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(Icons.school_rounded, size: 36, color: accent),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // ── Título ──────────────────────────────────────────────
+                Text(
+                  'Mural Acadêmico',
+                  style: AppTypography.title1.copyWith(color: textPrimary),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'FATEC — Avisos e Comunicados',
+                  style: AppTypography.footnote.copyWith(color: textSecondary),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 36),
+
+                // ── Erro ────────────────────────────────────────────────
+                if (authState.errorMessage != null) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.destructive.withOpacity(0.07),
+                      borderRadius: AppRadius.borderMd,
+                    ),
+                    child: Text(
+                      authState.errorMessage!,
+                      style: AppTypography.footnote
+                          .copyWith(color: AppColors.destructive),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
+                // ── Campos agrupados ────────────────────────────────────
+                Form(
+                  key: _formKey,
+                  child: _GroupedFields(
+                    surface: surface,
+                    separator: separator,
+                    children: [
+                      AppTextField(
+                        hint: 'E-mail institucional',
+                        controller: _emailCtrl,
+                        keyboardType: TextInputType.emailAddress,
+                        prefixIcon: Icons.person_outline_rounded,
+                        validator: Validators.email,
+                        textInputAction: TextInputAction.next,
+                        fillColor: Colors.transparent,
                       ),
-                      const SizedBox(height: AppSpacing.lg),
+                      AppTextField(
+                        hint: 'Senha',
+                        controller: _passCtrl,
+                        isPassword: true,
+                        prefixIcon: Icons.lock_outline_rounded,
+                        validator: Validators.password,
+                        textInputAction: TextInputAction.done,
+                        fillColor: Colors.transparent,
+                      ),
                     ],
+                  ),
+                ),
+                const SizedBox(height: 6),
 
-                    // Campos de Formulário
-                    AppTextField(
-                      label: 'E-mail institucional',
-                      hint: 'nome@fatec.sp.gov.br',
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      prefixIcon: Icons.email_outlined,
-                      validator: Validators.email,
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    AppTextField(
-                      label: 'Senha',
-                      hint: '••••••••',
-                      controller: _passwordController,
-                      isPassword: true,
-                      prefixIcon: Icons.lock_outline,
-                      validator: Validators.password,
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-
-                    // Esqueci a senha
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: () => context.push('/forgot-password'),
-                        child: Text(
-                          'Esqueceu a senha?',
-                          style: AppTypography.labelMedium.copyWith(
-                            color: isDark ? AppColors.primaryLight : AppColors.primary,
-                          ),
-                        ),
+                // Esqueci a senha
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: GestureDetector(
+                    onTap: () => context.push('/forgot-password'),
+                    child: Text(
+                      'Esqueceu a senha?',
+                      style: AppTypography.footnote.copyWith(
+                        color: accent,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(height: AppSpacing.md),
+                  ),
+                ),
+                const SizedBox(height: 20),
 
-                    // Botão Entrar
-                    AppButton(
-                      text: 'Entrar no Mural',
-                      isLoading: authState.isLoading,
-                      onPressed: _submit,
-                      icon: Icons.login_rounded,
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
+                // ── Botão Entrar ─────────────────────────────────────────
+                AppButton(
+                  text: 'Entrar',
+                  isLoading: authState.isLoading,
+                  onPressed: _submit,
+                ),
+                const SizedBox(height: 20),
 
-                    // Cadastro
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Primeiro acesso? ',
-                          style: AppTypography.bodySmall.copyWith(
-                            color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => context.push('/register'),
-                          child: Text(
-                            'Criar conta',
-                            style: AppTypography.labelMedium.copyWith(
-                              color: isDark ? AppColors.primaryLight : AppColors.primary,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: AppSpacing.xxl),
-                    Divider(color: isDark ? AppColors.dividerDark : AppColors.dividerLight),
-                    const SizedBox(height: AppSpacing.md),
-
-                    // Acesso Rápido de Demonstração (Facilita testes do avaliador para cada perfil)
+                // ── Link de cadastro ─────────────────────────────────────
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
                     Text(
-                      'ACESSO RÁPIDO PARA TESTES DE PERMISSÃO',
-                      style: AppTypography.labelSmall.copyWith(
-                        color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                        letterSpacing: 0.5,
-                      ),
-                      textAlign: TextAlign.center,
+                      'Não tem conta? ',
+                      style: AppTypography.footnote
+                          .copyWith(color: textSecondary),
                     ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      alignment: WrapAlignment.center,
-                      children: [
-                        _demoRoleChip('Aluno', UserRole.student, isDark),
-                        _demoRoleChip('Representante', UserRole.representative, isDark),
-                        _demoRoleChip('Professor', UserRole.teacher, isDark),
-                        _demoRoleChip('Coordenador', UserRole.coordinator, isDark),
-                        _demoRoleChip('Admin', UserRole.admin, isDark),
-                      ],
+                    GestureDetector(
+                      onTap: () => context.push('/register'),
+                      child: Text(
+                        'Cadastrar',
+                        style: AppTypography.footnote.copyWith(
+                          color: accent,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ],
                 ),
-              ),
+
+                const SizedBox(height: 48),
+              ],
             ),
           ),
         ),
       ),
     );
   }
+}
 
-  Widget _demoRoleChip(String label, UserRole role, bool isDark) {
-    return ActionChip(
-      label: Text(label, style: AppTypography.labelSmall),
-      avatar: const Icon(Icons.person_outline, size: 14),
-      backgroundColor: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
-      side: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight),
-      onPressed: () => _fillDemoUser(role),
+/// Seção agrupada de campos — superfície branca com separadores internos.
+class _GroupedFields extends StatelessWidget {
+  final Color surface;
+  final Color separator;
+  final List<Widget> children;
+
+  const _GroupedFields({
+    required this.surface,
+    required this.separator,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: surface,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      clipBehavior: Clip.antiAlias,
+      // Sobrescreve o tema para que os campos sejam transparentes
+      // dentro do container branco — padrão iOS grouped list
+      child: Theme(
+        data: theme.copyWith(
+          inputDecorationTheme: theme.inputDecorationTheme.copyWith(
+            filled: true,
+            fillColor: Colors.transparent,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
+          ),
+        ),
+        child: Column(
+          children: [
+            for (int i = 0; i < children.length; i++) ...[
+              children[i],
+              if (i < children.length - 1)
+                Container(
+                  height: 0.5,
+                  color: separator,
+                  margin: const EdgeInsets.only(left: 52),
+                ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

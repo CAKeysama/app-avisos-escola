@@ -4,11 +4,10 @@ import 'app_colors.dart';
 import 'app_radius.dart';
 import 'app_typography.dart';
 
-/// Configuração completa de temas Light e Dark para a aplicação.
+/// Tema Apple HIG — branco como base, mínimo de ruído visual.
 class AppTheme {
   AppTheme._();
 
-  /// Tema Claro Institucional
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
@@ -22,63 +21,99 @@ class AppTheme {
         onPrimaryContainer: AppColors.onPrimaryContainer,
         secondary: AppColors.secondary,
         surface: AppColors.surfaceLight,
-        onSurface: AppColors.textPrimaryLight,
-        error: AppColors.error,
+        onSurface: AppColors.labelPrimary,
+        error: AppColors.destructive,
         onError: Colors.white,
       ),
-      appBarTheme: const AppBarTheme(
+      // AppBar — igual ao iOS: branca, título central, sem sombra
+      appBarTheme: AppBarTheme(
         backgroundColor: AppColors.surfaceLight,
-        foregroundColor: AppColors.textPrimaryLight,
+        foregroundColor: AppColors.labelPrimary,
         elevation: 0,
-        centerTitle: false,
-        scrolledUnderElevation: 1,
-        shadowColor: AppColors.borderLight,
-        systemOverlayStyle: SystemUiOverlayStyle(
+        scrolledUnderElevation: 0,
+        centerTitle: true,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.transparent,
+        systemOverlayStyle: const SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
           statusBarIconBrightness: Brightness.dark,
         ),
-        titleTextStyle: AppTypography.titleLarge,
-      ),
-      cardTheme: CardThemeData(
-        color: AppColors.cardLight,
-        elevation: 0,
-        margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(
-          borderRadius: AppRadius.borderLg,
-          side: const BorderSide(color: AppColors.borderLight, width: 1.0),
+        titleTextStyle: AppTypography.navTitle.copyWith(
+          color: AppColors.labelPrimary,
+        ),
+        iconTheme: const IconThemeData(
+          color: AppColors.primary,
+          size: 22,
         ),
       ),
+      // Card sem sombra — sombra é ruído. Separadores fazem o trabalho.
+      cardTheme: CardThemeData(
+        color: AppColors.surfaceLight,
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderLg),
+      ),
+      // Input estilo iOS — fundo cinza suave, sem borda alguma
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.surfaceLight,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        hintStyle: AppTypography.bodyMedium.copyWith(color: AppColors.textMutedLight),
+        fillColor: AppColors.fillLight,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+        hintStyle: AppTypography.body.copyWith(color: AppColors.labelTertiary),
         border: OutlineInputBorder(
           borderRadius: AppRadius.borderMd,
-          borderSide: const BorderSide(color: AppColors.borderLight),
+          borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: AppRadius.borderMd,
-          borderSide: const BorderSide(color: AppColors.borderLight),
+          borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: AppRadius.borderMd,
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.8),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: AppRadius.borderMd,
-          borderSide: const BorderSide(color: AppColors.error),
+          borderSide:
+              const BorderSide(color: AppColors.destructive, width: 1.5),
         ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: AppRadius.borderMd,
+          borderSide:
+              const BorderSide(color: AppColors.destructive, width: 1.5),
+        ),
+        errorStyle: AppTypography.caption.copyWith(color: AppColors.destructive),
       ),
       dividerTheme: const DividerThemeData(
-        color: AppColors.dividerLight,
-        thickness: 1,
-        space: 1,
+        color: AppColors.separatorLight,
+        thickness: 0.5,
+        space: 0,
+      ),
+      listTileTheme: const ListTileThemeData(
+        tileColor: AppColors.surfaceLight,
+        contentPadding: EdgeInsets.symmetric(horizontal: 16),
+        minVerticalPadding: 12,
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.all(Colors.white),
+        trackColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? AppColors.primary
+                : AppColors.fillLight),
+        trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
+        overlayColor: WidgetStateProperty.all(Colors.transparent),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: AppColors.surfaceLight,
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderXl),
+        elevation: 0,
       ),
     );
   }
 
-  /// Tema Escuro Institucional (Apple Slate Dark)
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
@@ -88,60 +123,95 @@ class AppTheme {
       colorScheme: const ColorScheme.dark(
         primary: AppColors.primaryLight,
         onPrimary: Colors.white,
-        secondary: AppColors.textSecondaryDark,
+        secondary: AppColors.labelSecondaryDark,
         surface: AppColors.surfaceDark,
-        onSurface: AppColors.textPrimaryDark,
-        error: AppColors.error,
+        onSurface: AppColors.labelPrimaryDark,
+        error: AppColors.destructive,
         onError: Colors.white,
       ),
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: AppColors.surfaceDark,
-        foregroundColor: AppColors.textPrimaryDark,
+        foregroundColor: AppColors.labelPrimaryDark,
         elevation: 0,
-        centerTitle: false,
-        scrolledUnderElevation: 1,
-        shadowColor: AppColors.borderDark,
-        systemOverlayStyle: SystemUiOverlayStyle(
+        scrolledUnderElevation: 0,
+        centerTitle: true,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.transparent,
+        systemOverlayStyle: const SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
           statusBarIconBrightness: Brightness.light,
         ),
-        titleTextStyle: AppTypography.titleLarge,
+        titleTextStyle: AppTypography.navTitle.copyWith(
+          color: AppColors.labelPrimaryDark,
+        ),
+        iconTheme: const IconThemeData(
+          color: AppColors.primaryLight,
+          size: 22,
+        ),
       ),
       cardTheme: CardThemeData(
-        color: AppColors.cardDark,
+        color: AppColors.surfaceDark,
         elevation: 0,
         margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(
-          borderRadius: AppRadius.borderLg,
-          side: const BorderSide(color: AppColors.borderDark, width: 1.0),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderLg),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.surfaceDark,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        hintStyle: AppTypography.bodyMedium.copyWith(color: AppColors.textMutedDark),
+        fillColor: AppColors.fillDark,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+        hintStyle:
+            AppTypography.body.copyWith(color: AppColors.labelTertiaryDark),
         border: OutlineInputBorder(
           borderRadius: AppRadius.borderMd,
-          borderSide: const BorderSide(color: AppColors.borderDark),
+          borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: AppRadius.borderMd,
-          borderSide: const BorderSide(color: AppColors.borderDark),
+          borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: AppRadius.borderMd,
-          borderSide: const BorderSide(color: AppColors.primaryLight, width: 1.8),
+          borderSide:
+              const BorderSide(color: AppColors.primaryLight, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: AppRadius.borderMd,
-          borderSide: const BorderSide(color: AppColors.error),
+          borderSide:
+              const BorderSide(color: AppColors.destructive, width: 1.5),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: AppRadius.borderMd,
+          borderSide:
+              const BorderSide(color: AppColors.destructive, width: 1.5),
         ),
       ),
       dividerTheme: const DividerThemeData(
-        color: AppColors.dividerDark,
-        thickness: 1,
-        space: 1,
+        color: AppColors.separatorDark,
+        thickness: 0.5,
+        space: 0,
+      ),
+      listTileTheme: const ListTileThemeData(
+        tileColor: AppColors.surfaceDark,
+        contentPadding: EdgeInsets.symmetric(horizontal: 16),
+        minVerticalPadding: 12,
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.all(Colors.white),
+        trackColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? AppColors.primaryLight
+                : AppColors.fillDark),
+        trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
+        overlayColor: WidgetStateProperty.all(Colors.transparent),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: AppColors.primaryLight),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: AppColors.surfaceDark,
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderXl),
+        elevation: 0,
       ),
     );
   }

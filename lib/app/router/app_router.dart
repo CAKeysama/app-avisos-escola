@@ -38,9 +38,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return '/home';
       }
 
-      // Proteção de rota administrativa por Role
+      // Proteção de rota administrativa por Role (Admin, Coordenador e CLI)
       if (state.matchedLocation.startsWith('/admin')) {
-        if (authState.user?.role.isAdmin != true) {
+        if (authState.user?.role.canManageUsers != true) {
           return '/home';
         }
       }

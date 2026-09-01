@@ -14,17 +14,45 @@ class SplashPage extends ConsumerStatefulWidget {
   ConsumerState<SplashPage> createState() => _SplashPageState();
 }
 
-class _SplashPageState extends ConsumerState<SplashPage> {
+class _SplashPageState extends ConsumerState<SplashPage>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _animController;
+  late final Animation<double> _fadeAnim;
+  late final Animation<double> _scaleAnim;
+
   @override
   void initState() {
     super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+
+    _fadeAnim = CurvedAnimation(
+      parent: _animController,
+      curve: const Interval(0.0, 0.7, curve: Curves.easeOut),
+    );
+
+    _scaleAnim = Tween<double>(begin: 0.82, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animController,
+        curve: const Interval(0.0, 0.8, curve: Curves.easeOutCubic),
+      ),
+    );
+
+    _animController.forward();
     _checkAuth();
   }
 
-  Future<void> _checkAuth() async {
-    await Future.delayed(const Duration(milliseconds: 1200));
-    if (!mounted) return;
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
 
+  Future<void> _checkAuth() async {
+    await Future.delayed(const Duration(milliseconds: 1400));
+    if (!mounted) return;
     final authState = ref.read(authControllerProvider);
     if (authState.isAuthenticated) {
       context.go('/home');
@@ -38,60 +66,72 @@ class _SplashPageState extends ConsumerState<SplashPage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.backgroundDark : AppColors.backgroundLight,
+      backgroundColor:
+          isDark ? AppColors.backgroundDark : AppColors.backgroundLight,
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 88,
-              height: 88,
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.surfaceDark : AppColors.primaryContainer,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: isDark ? AppColors.borderDark : AppColors.primaryLight.withOpacity(0.3),
-                  width: 1.5,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withOpacity(0.12),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
+        child: FadeTransition(
+          opacity: _fadeAnim,
+          child: ScaleTransition(
+            scale: _scaleAnim,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Ícone com glow suave
+                Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppColors.surfaceDark
+                        : AppColors.primaryContainer,
+                    borderRadius: BorderRadius.circular(26),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withOpacity(isDark ? 0.35 : 0.22),
+                        blurRadius: 32,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: const Icon(
-                Icons.campaign_rounded,
-                size: 46,
-                color: AppColors.primary,
-              ),
+                  child: const Icon(
+                    Icons.campaign_rounded,
+                    size: 52,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                Text(
+                  AppConstants.appName,
+                  style: AppTypography.displayMedium.copyWith(
+                    color: isDark
+                        ? AppColors.textPrimaryDark
+                        : AppColors.textPrimaryLight,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  AppConstants.appSubtitle,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: isDark
+                        ? AppColors.textSecondaryDark
+                        : AppColors.textSecondaryLight,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xxl + 8),
+                SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.0,
+                    strokeCap: StrokeCap.round,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: AppSpacing.xl),
-            Text(
-              AppConstants.appName,
-              style: AppTypography.displayMedium.copyWith(
-                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              AppConstants.appSubtitle,
-              style: AppTypography.bodyMedium.copyWith(
-                color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xxl),
-            const SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.2,
-                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

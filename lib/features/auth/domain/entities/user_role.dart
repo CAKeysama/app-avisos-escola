@@ -3,6 +3,7 @@ enum UserRole {
   student,
   representative,
   teacher,
+  cli,
   coordinator,
   admin;
 
@@ -14,6 +15,8 @@ enum UserRole {
         return 'Representante de Turma';
       case UserRole.teacher:
         return 'Professor';
+      case UserRole.cli:
+        return 'Membro do CLI / Apoio';
       case UserRole.coordinator:
         return 'Coordenador de Curso';
       case UserRole.admin:
@@ -25,22 +28,36 @@ enum UserRole {
   bool get canCreateForClass =>
       this == UserRole.representative ||
       this == UserRole.teacher ||
+      this == UserRole.cli ||
       this == UserRole.coordinator ||
       this == UserRole.admin;
 
   /// Pode criar avisos para o curso inteiro
   bool get canCreateForCourse =>
-      this == UserRole.coordinator || this == UserRole.admin;
+      this == UserRole.cli ||
+      this == UserRole.coordinator ||
+      this == UserRole.admin;
 
   /// Pode criar avisos para toda a escola
   bool get canCreateForSchool =>
-      this == UserRole.coordinator || this == UserRole.admin;
+      this == UserRole.cli ||
+      this == UserRole.coordinator ||
+      this == UserRole.admin;
 
   /// Pode fixar avisos no mural
   bool get canPinAnnouncements =>
-      this == UserRole.coordinator || this == UserRole.admin || this == UserRole.representative;
+      this == UserRole.cli ||
+      this == UserRole.coordinator ||
+      this == UserRole.admin ||
+      this == UserRole.representative;
 
-  /// Pode gerenciar usuários e cadastros
+  /// Pode gerenciar usuários, cargos e aprovar solicitações
+  bool get canManageUsers =>
+      this == UserRole.cli ||
+      this == UserRole.coordinator ||
+      this == UserRole.admin;
+
+  /// É administrador do sistema
   bool get isAdmin => this == UserRole.admin;
 
   /// Converte string para enum de forma segura
@@ -52,6 +69,8 @@ enum UserRole {
       case 'teacher':
       case 'professor':
         return UserRole.teacher;
+      case 'cli':
+        return UserRole.cli;
       case 'coordinator':
       case 'coordenador':
         return UserRole.coordinator;

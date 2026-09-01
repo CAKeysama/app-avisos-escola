@@ -3,9 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/services/mock_data_service.dart';
+import '../../../../core/services/notification_service.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_radius.dart';
-import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/widgets/app_button.dart';
@@ -47,7 +46,6 @@ class _CreateEditAnnouncementPageState
     _selectedCourseId = user?.courseId ?? 'dsm';
     _selectedClassId = user?.classId ?? 'dsm-4-a';
 
-    // Ajusta o público padrão de acordo com a permissão
     if (user?.role == UserRole.coordinator || user?.role == UserRole.admin) {
       _targetType = AnnouncementTargetType.school;
     } else {
@@ -98,10 +96,15 @@ class _CreateEditAnnouncementPageState
       );
 
       if (mounted) {
+        // Dispara notificação local nativa
+        NotificationService().showLocalNotification(
+          title: '📢 Novo Aviso: ${_titleController.text}',
+          body: _descriptionController.text,
+        );
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Aviso publicado no mural com sucesso!'),
-            backgroundColor: AppColors.success,
           ),
         );
         context.pop();
@@ -111,7 +114,7 @@ class _CreateEditAnnouncementPageState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(e.toString()),
-            backgroundColor: AppColors.error,
+            backgroundColor: AppColors.destructive,
           ),
         );
       }
@@ -129,219 +132,325 @@ class _CreateEditAnnouncementPageState
       return const Scaffold(body: Center(child: Text('Acesso não autorizado.')));
     }
 
+    final bg = isDark ? AppColors.backgroundDark : AppColors.backgroundLight;
+    final surface = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
+    final separator = isDark ? AppColors.separatorDark : AppColors.separatorLight;
+    final textPrimary = isDark ? AppColors.labelPrimaryDark : AppColors.labelPrimary;
+    final textSecondary = isDark ? AppColors.labelSecondaryDark : AppColors.labelSecondary;
+    final textTertiary = isDark ? AppColors.labelTertiaryDark : AppColors.labelTertiary;
+    final accent = isDark ? AppColors.primaryLight : AppColors.primary;
+
     final availableClasses = MockDataService.classes
         .where((c) => c['courseId'] == _selectedCourseId)
         .toList();
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.backgroundDark : AppColors.backgroundLight,
+      backgroundColor: bg,
       appBar: AppBar(
-        title: const Text('Novo Aviso Acadêmico'),
+        backgroundColor: surface,
+        title: Text(
+          'Novo Aviso',
+          style: AppTypography.navTitle.copyWith(color: textPrimary),
+        ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          icon: Icon(Icons.arrow_back_ios_rounded, size: 18, color: accent),
           onPressed: () => context.pop(),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(0.5),
+          child: Container(height: 0.5, color: separator.withOpacity(0.6)),
         ),
       ),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 750),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(AppSpacing.xl),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Título
-                    AppTextField(
-                      label: 'Título do Aviso *',
-                      hint: 'Ex: Mudança de Sala para a aula de UX',
-                      controller: _titleController,
-                      validator: (val) => Validators.minLength(val, 5, 'Título muito curto'),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: Form(
+              key: _formKey,
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                children: [
+                  // ── Seção: Conteúdo do Aviso ─────────────────────────────
+                  _SectionHeader(label: 'CONTEÚDO DO AVISO', textTertiary: textTertiary),
+                  _GroupedSection(
+                    surface: surface,
+                    separator: separator,
+                    children: [
+                      AppTextField(
+                        hint: 'Título do Aviso',
+                        controller: _titleController,
+                        fillColor: Colors.transparent,
+                        validator: (val) =>
+                            Validators.minLength(val, 5, 'Título muito curto'),
+                        textInputAction: TextInputAction.next,
+                      ),
+                      AppTextField(
+                        hint: 'Descrição detalhada do comunicado...',
+                        controller: _descriptionController,
+                        fillColor: Colors.transparent,
+                        maxLines: 4,
+                        validator: (val) =>
+                            Validators.minLength(val, 10, 'Descrição muito curta'),
+                      ),
+                    ],
+                  ),
 
-                    // Categoria
-                    Text(
-                      'Categoria de Comunicação',
-                      style: AppTypography.labelMedium.copyWith(
-                        color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    DropdownButtonFormField<AnnouncementCategory>(
-                      value: _category,
-                      decoration: const InputDecoration(
-                        prefixIcon: Icon(Icons.category_outlined, size: 20),
-                      ),
-                      items: AnnouncementCategory.values.map((cat) {
-                        return DropdownMenuItem(
-                          value: cat,
-                          child: Row(
-                            children: [
-                              Icon(cat.icon, size: 16, color: cat.color),
-                              const SizedBox(width: 8),
-                              Text(cat.label),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (val) => setState(() => _category = val ?? _category),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
+                  const SizedBox(height: 24),
 
-                    // Nível de Prioridade
-                    Text(
-                      'Nível de Prioridade',
-                      style: AppTypography.labelMedium.copyWith(
-                        color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Row(
-                      children: AnnouncementPriority.values.map((prio) {
-                        final isSelected = _priority == prio;
-                        return Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                            child: InkWell(
-                              onTap: () => setState(() => _priority = prio),
-                              borderRadius: AppRadius.borderMd,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? prio.color
-                                      : (isDark ? AppColors.surfaceDark : AppColors.surfaceLight),
-                                  borderRadius: AppRadius.borderMd,
-                                  border: Border.all(
-                                    color: isSelected
-                                        ? prio.color
-                                        : (isDark ? AppColors.borderDark : AppColors.borderLight),
+                  // ── Seção: Classificação ─────────────────────────────────
+                  _SectionHeader(label: 'CLASSIFICAÇÃO E PÚBLICO', textTertiary: textTertiary),
+                  _GroupedSection(
+                    surface: surface,
+                    separator: separator,
+                    children: [
+                      // Categoria
+                      _DropdownRow<AnnouncementCategory>(
+                        label: 'Categoria',
+                        value: _category,
+                        textPrimary: textPrimary,
+                        textTertiary: textTertiary,
+                        items: AnnouncementCategory.values.map((cat) {
+                          return DropdownMenuItem(
+                            value: cat,
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: cat.color,
+                                    shape: BoxShape.circle,
                                   ),
                                 ),
-                                child: Column(
-                                  children: [
-                                    Icon(
-                                      prio.icon,
-                                      size: 18,
-                                      color: isSelected ? Colors.white : prio.color,
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      prio.label,
-                                      style: TextStyle(
-                                        color: isSelected
-                                            ? Colors.white
-                                            : (isDark ? Colors.white70 : Colors.black87),
-                                        fontSize: 12,
-                                        fontWeight:
-                                            isSelected ? FontWeight.w700 : FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                                const SizedBox(width: 10),
+                                Text(cat.label,
+                                    style: AppTypography.subheadline
+                                        .copyWith(color: textPrimary)),
+                              ],
                             ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-
-                    // Público-Alvo Segmentado (com regras de permissão)
-                    Text(
-                      'Público-Alvo',
-                      style: AppTypography.labelMedium.copyWith(
-                        color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    DropdownButtonFormField<AnnouncementTargetType>(
-                      value: _targetType,
-                      decoration: const InputDecoration(
-                        prefixIcon: Icon(Icons.people_outline, size: 20),
-                      ),
-                      items: [
-                        if (user.role.canCreateForClass)
-                          const DropdownMenuItem(
-                            value: AnnouncementTargetType.classTarget,
-                            child: Text('Turma / Sala Específica'),
-                          ),
-                        if (user.role.canCreateForCourse)
-                          const DropdownMenuItem(
-                            value: AnnouncementTargetType.course,
-                            child: Text('Todo o Curso'),
-                          ),
-                        if (user.role.canCreateForSchool)
-                          const DropdownMenuItem(
-                            value: AnnouncementTargetType.school,
-                            child: Text('Toda a Escola (Geral)'),
-                          ),
-                      ],
-                      onChanged: (val) => setState(() => _targetType = val ?? _targetType),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-
-                    // Se for para Turma específica, seleciona a turma
-                    if (_targetType == AnnouncementTargetType.classTarget) ...[
-                      DropdownButtonFormField<String>(
-                        value: _selectedClassId,
-                        decoration: const InputDecoration(
-                          labelText: 'Selecione a Turma',
-                          prefixIcon: Icon(Icons.meeting_room_outlined, size: 20),
-                        ),
-                        items: availableClasses.map((cl) {
-                          return DropdownMenuItem<String>(
-                            value: cl['id'],
-                            child: Text(cl['name']!, overflow: TextOverflow.ellipsis),
                           );
                         }).toList(),
-                        onChanged: (val) => setState(() => _selectedClassId = val),
+                        onChanged: (val) =>
+                            setState(() => _category = val ?? _category),
                       ),
-                      const SizedBox(height: AppSpacing.md),
-                    ],
-
-                    // Conteúdo / Descrição do Aviso
-                    AppTextField(
-                      label: 'Descrição Completa *',
-                      hint: 'Digite aqui todos os detalhes do comunicado institucional...',
-                      controller: _descriptionController,
-                      maxLines: 5,
-                      validator: (val) => Validators.minLength(val, 10, 'Descrição muito curta'),
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-
-                    // Opção de Fixar (se autorizado)
-                    if (user.role.canPinAnnouncements) ...[
-                      SwitchListTile(
-                        value: _isPinned,
-                        onChanged: (val) => setState(() => _isPinned = val),
-                        title: const Text('Fixar aviso no topo do mural'),
-                        subtitle: const Text('O aviso ficará em destaque para todos os alunos'),
-                        contentPadding: EdgeInsets.zero,
-                        activeColor: AppColors.primary,
+                      // Prioridade
+                      _DropdownRow<AnnouncementPriority>(
+                        label: 'Prioridade',
+                        value: _priority,
+                        textPrimary: textPrimary,
+                        textTertiary: textTertiary,
+                        items: AnnouncementPriority.values.map((prio) {
+                          return DropdownMenuItem(
+                            value: prio,
+                            child: Text(prio.label,
+                                style: AppTypography.subheadline
+                                    .copyWith(color: textPrimary)),
+                          );
+                        }).toList(),
+                        onChanged: (val) =>
+                            setState(() => _priority = val ?? _priority),
                       ),
-                      const SizedBox(height: AppSpacing.lg),
+                      // Público-Alvo
+                      _DropdownRow<AnnouncementTargetType>(
+                        label: 'Público-Alvo',
+                        value: _targetType,
+                        textPrimary: textPrimary,
+                        textTertiary: textTertiary,
+                        items: [
+                          if (user.role.canCreateForClass)
+                            DropdownMenuItem(
+                              value: AnnouncementTargetType.classTarget,
+                              child: Text('Turma Específica',
+                                  style: AppTypography.subheadline
+                                      .copyWith(color: textPrimary)),
+                            ),
+                          if (user.role.canCreateForCourse)
+                            DropdownMenuItem(
+                              value: AnnouncementTargetType.course,
+                              child: Text('Todo o Curso',
+                                  style: AppTypography.subheadline
+                                      .copyWith(color: textPrimary)),
+                            ),
+                          if (user.role.canCreateForSchool)
+                            DropdownMenuItem(
+                              value: AnnouncementTargetType.school,
+                              child: Text('Toda a Escola',
+                                  style: AppTypography.subheadline
+                                      .copyWith(color: textPrimary)),
+                            ),
+                        ],
+                        onChanged: (val) =>
+                            setState(() => _targetType = val ?? _targetType),
+                      ),
+                      // Turma (se aplicável)
+                      if (_targetType == AnnouncementTargetType.classTarget)
+                        _DropdownRow<String>(
+                          label: 'Selecione a Turma',
+                          value: _selectedClassId,
+                          textPrimary: textPrimary,
+                          textTertiary: textTertiary,
+                          items: availableClasses.map((cl) {
+                            return DropdownMenuItem<String>(
+                              value: cl['id'],
+                              child: Text(cl['name']!,
+                                  style: AppTypography.subheadline
+                                      .copyWith(color: textPrimary),
+                                  overflow: TextOverflow.ellipsis),
+                            );
+                          }).toList(),
+                          onChanged: (val) =>
+                              setState(() => _selectedClassId = val),
+                        ),
                     ],
+                  ),
 
-                    // Botão Publicar
-                    AppButton(
-                      text: 'Publicar Aviso no Mural',
-                      isLoading: _isLoading,
-                      onPressed: _submit,
-                      icon: Icons.send_rounded,
+                  // ── Seção: Opções Adicionais (Fixar no topo) ──────────────
+                  if (user.role.canPinAnnouncements) ...[
+                    const SizedBox(height: 24),
+                    _SectionHeader(label: 'OPÇÕES DE DESTAQUE', textTertiary: textTertiary),
+                    _GroupedSection(
+                      surface: surface,
+                      separator: separator,
+                      children: [
+                        SwitchListTile(
+                          value: _isPinned,
+                          onChanged: (val) => setState(() => _isPinned = val),
+                          tileColor: Colors.transparent,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          title: Text(
+                            'Fixar aviso no topo do mural',
+                            style: AppTypography.subheadline.copyWith(
+                              color: textPrimary,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                          subtitle: Text(
+                            'O aviso ficará em destaque para todos os alunos',
+                            style: AppTypography.footnote.copyWith(
+                              color: textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
-                ),
+
+                  const SizedBox(height: 32),
+
+                  // ── Botão Publicar ───────────────────────────────────────
+                  AppButton(
+                    text: 'Publicar Aviso',
+                    isLoading: _isLoading,
+                    onPressed: _submit,
+                  ),
+
+                  const SizedBox(height: 40),
+                ],
               ),
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ── Componentes de Seção Agrupada iOS ───────────────────────────────────────
+
+class _SectionHeader extends StatelessWidget {
+  final String label;
+  final Color textTertiary;
+  const _SectionHeader({required this.label, required this.textTertiary});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 6),
+      child: Text(
+        label,
+        style: AppTypography.caption2.copyWith(
+          color: textTertiary,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+}
+
+class _GroupedSection extends StatelessWidget {
+  final Color surface;
+  final Color separator;
+  final List<Widget> children;
+  const _GroupedSection({
+    required this.surface,
+    required this.separator,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: surface,
+      borderRadius: BorderRadius.circular(12),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          for (int i = 0; i < children.length; i++) ...[
+            children[i],
+            if (i < children.length - 1)
+              Container(
+                height: 0.5,
+                color: separator,
+                margin: const EdgeInsets.only(left: 16),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _DropdownRow<T> extends StatelessWidget {
+  final String label;
+  final T? value;
+  final List<DropdownMenuItem<T>> items;
+  final ValueChanged<T?> onChanged;
+  final Color textPrimary;
+  final Color textTertiary;
+
+  const _DropdownRow({
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+    required this.textPrimary,
+    required this.textTertiary,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      child: DropdownButtonFormField<T>(
+        value: value,
+        decoration: InputDecoration(
+          filled: false,
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          labelText: label,
+          labelStyle: AppTypography.caption.copyWith(color: textTertiary),
+          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+        ),
+        icon: Icon(Icons.keyboard_arrow_down_rounded,
+            size: 20, color: textTertiary),
+        isExpanded: true,
+        items: items,
+        onChanged: onChanged,
+        style: AppTypography.subheadline.copyWith(color: textPrimary),
+        dropdownColor: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
       ),
     );
   }

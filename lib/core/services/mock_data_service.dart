@@ -57,6 +57,13 @@ class MockDataService {
       institution: 'FATEC São Paulo',
     ),
     const UserEntity(
+      id: 'usr_cli_01',
+      name: 'Lucas Mendes (CLI / Apoio)',
+      email: 'cli@fatec.sp.gov.br',
+      role: UserRole.cli,
+      institution: 'FATEC São Paulo',
+    ),
+    const UserEntity(
       id: 'usr_admin_01',
       name: 'Administração Acadêmica',
       email: 'admin@fatec.sp.gov.br',
